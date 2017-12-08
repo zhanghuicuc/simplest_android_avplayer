@@ -4,7 +4,6 @@ import android.media.AudioTrack;
 import android.media.MediaCodec;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
-import android.os.Process;
 import android.util.Log;
 
 import java.nio.ByteBuffer;
@@ -192,11 +191,6 @@ public class CodecState {
                 Log.d(TAG, "sampleSize: " + sampleSize + " trackIndex:" + trackIndex +
                         " sampleTime:" + sampleTime + " sampleFlags:" + sampleFlags);
                 mSawInputEOS = true;
-                // FIX-ME: in tunneled mode we currently use input EOS as output EOS indicator
-                // we should use stream duration
-                //if (!mIsAudio) {
-                //    mSawOutputEOS = true;
-                //}
                 return false;
             }
 
@@ -205,8 +199,6 @@ public class CodecState {
                     mSampleBaseTimeUs = sampleTime;
                 }
                 sampleTime -= mSampleBaseTimeUs;
-                // FIX-ME: we currently use input buffer time
-                // as video presentation time. This is not accurate and should be fixed
                 // this is just used for getCurrentPosition, not used for avsync
                 mPresentationTimeUs = sampleTime;
             }
@@ -230,11 +222,6 @@ public class CodecState {
             Log.d(TAG, "saw input EOS on track " + mTrackIndex);
 
             mSawInputEOS = true;
-            // FIX-ME: we currently use input EOS as output EOS indicator
-            // we should use stream duration
-            //if (!mIsAudio) {
-            //    mSawOutputEOS = true;
-            //}
 
             mCodec.queueInputBuffer(
                     index, 0 /* offset */, 0 /* sampleSize */,
@@ -248,7 +235,6 @@ public class CodecState {
 
     private void onOutputFormatChanged() {
         String mime = mOutputFormat.getString(MediaFormat.KEY_MIME);
-        // b/9250789
         Log.d(TAG, "CodecState::onOutputFormatChanged " + mime);
 
         mIsAudio = false;
@@ -299,12 +285,6 @@ public class CodecState {
 
             mSawOutputEOS = true;
 
-            // We need to stop the audio track so that all audio frames are played
-            // and the video codec can consume all of its data.
-            // After audio track stop, getAudioTimeUs will return 0.
-            if (mAudioTrack != null) {
-                mAudioTrack.stop();
-            }
             return false;
         }
 

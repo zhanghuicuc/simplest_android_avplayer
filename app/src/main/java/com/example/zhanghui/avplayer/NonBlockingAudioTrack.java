@@ -33,10 +33,10 @@ public class NonBlockingAudioTrack {
     private LinkedList<QueueElement> mQueue = new LinkedList<QueueElement>();
     private boolean mStopped;
     private Method getLatencyMethod;
-    private long latencyUs;
-    private long lastTimestampSampleTimeUs;
-    private boolean audioTimestampSet;
-    private final AudioTimestamp audioTimestamp;
+    private long mLatencyUs;
+    private long mLastTimestampSampleTimeUs;
+    private boolean mAudioTimestampSet;
+    private final AudioTimestamp mAudioTimestamp;
 
     public NonBlockingAudioTrack(int sampleRate, int channelCount) {
         int channelConfig;
@@ -76,37 +76,36 @@ public class NonBlockingAudioTrack {
             getLatencyMethod =
                     android.media.AudioTrack.class.getMethod("getLatency", (Class<?>[]) null);
         } catch (NoSuchMethodException e) {}
-        latencyUs = 0;
-        lastTimestampSampleTimeUs = 0;
-        audioTimestamp = new AudioTimestamp();
+        mLatencyUs = 0;
+        mLastTimestampSampleTimeUs = 0;
+        mAudioTimestamp = new AudioTimestamp();
     }
 
     public long getAudioTimeUs() {
         long systemClockUs = System.nanoTime() / 1000;
         int numFramesPlayed = mAudioTrack.getPlaybackHeadPosition();
-        if (systemClockUs - lastTimestampSampleTimeUs >= MIN_TIMESTAMP_SAMPLE_INTERVAL_US) {
-            audioTimestampSet = mAudioTrack.getTimestamp(audioTimestamp);
+        if (systemClockUs - mLastTimestampSampleTimeUs >= MIN_TIMESTAMP_SAMPLE_INTERVAL_US) {
+            mAudioTimestampSet = mAudioTrack.getTimestamp(mAudioTimestamp);
             if (getLatencyMethod != null) {
                 try {
-                    latencyUs = (Integer) getLatencyMethod.invoke(mAudioTrack, (Object[]) null) * 1000L / 2;
-                    latencyUs = Math.max(latencyUs, 0);
+                    mLatencyUs = (Integer) getLatencyMethod.invoke(mAudioTrack, (Object[]) null) * 1000L / 2;
+                    mLatencyUs = Math.max(mLatencyUs, 0);
                 } catch (Exception e) {
                     getLatencyMethod = null;
                 }
             }
-            lastTimestampSampleTimeUs = systemClockUs;
+            mLastTimestampSampleTimeUs = systemClockUs;
         }
 
-        if (audioTimestampSet) {
+        if (mAudioTimestampSet) {
             // Calculate the speed-adjusted position using the timestamp (which may be in the future).
-            long elapsedSinceTimestampUs = System.nanoTime() / 1000 - (audioTimestamp.nanoTime / 1000);
+            long elapsedSinceTimestampUs = System.nanoTime() / 1000 - (mAudioTimestamp.nanoTime / 1000);
             long elapsedSinceTimestampFrames = elapsedSinceTimestampUs * mSampleRate / 1000000L;
-            long elapsedFrames = audioTimestamp.framePosition + elapsedSinceTimestampFrames;
+            long elapsedFrames = mAudioTimestamp.framePosition + elapsedSinceTimestampFrames;
             long durationUs = (elapsedFrames * 1000000L) / mSampleRate;
             return durationUs;
         } else {
-            long durationUs = (numFramesPlayed * 1000000L) / mSampleRate - latencyUs;
-            //durationUs = Math.max(durationUs, 0);
+            long durationUs = (numFramesPlayed * 1000000L) / mSampleRate - mLatencyUs;
             return durationUs;
         }
     }
@@ -146,12 +145,12 @@ public class NonBlockingAudioTrack {
     public void release() {
         mQueue.clear();
         mNumBytesQueued = 0;
-        latencyUs = 0;
-        lastTimestampSampleTimeUs = 0;
+        mLatencyUs = 0;
+        mLastTimestampSampleTimeUs = 0;
         mAudioTrack.release();
         mAudioTrack = null;
         mStopped = false;
-        audioTimestampSet = false;
+        mAudioTimestampSet = false;
     }
 
     public void process() {

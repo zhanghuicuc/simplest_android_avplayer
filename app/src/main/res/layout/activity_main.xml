@@ -26,7 +26,7 @@
         <EditText
             android:layout_width="180dp"
             android:layout_height="match_parent"
-            android:hint="请输入源地址!"
+            android:hint="/sdcard/Sync-One2-Test-1080p-24-H_264_V.mp4"
             android:gravity="center|left"
             android:id="@+id/input_url_editText" />
 
@@ -52,6 +52,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center|left"
+            android:hint="Please enable file read permission!"
             android:id="@+id/toast_editText" />
 
     </LinearLayout>

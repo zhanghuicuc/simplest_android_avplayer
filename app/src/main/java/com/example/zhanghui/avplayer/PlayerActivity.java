@@ -24,14 +24,9 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback{
     private SurfaceView mSurfaceV;
     private SurfaceHolder mSurfaceHolder;
     private MediaController mediaController;
+    private Uri mFileUrl;
     private static final int SLEEP_TIME_MS = 1000;
     private static final long PLAY_TIME_MS = TimeUnit.MILLISECONDS.convert(4, TimeUnit.MINUTES);
-    private static final Uri AUDIO_URL = Uri.parse(
-            //"/sdcard/taipei-1080-4m.mp4");  // H.264 Base + AAC
-            "/sdcard/Sync-One2-Test-1080p-24-H_264_V.mp4");  // H.264 Base + AAC
-    private static final Uri VIDEO_URL = Uri.parse(
-            //"/sdcard/taipei-1080-4m.mp4");  // H.264 Base + AAC
-            "/sdcard/Sync-One2-Test-1080p-24-H_264_V.mp4");  // H.264 Base + AAC
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +46,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback{
                 return mediaController.dispatchKeyEvent(event);
             }
         });
+        Intent intent = getIntent();
+        mFileUrl = intent.getData();
         Intent i = new Intent("com.android.music.musicservicecommand");
         i.putExtra("command", "pause");
         this.sendBroadcast(i);
@@ -97,17 +94,17 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback{
         }
     }
 
-    public class DecodeTask extends AsyncTask<String, Integer, String> {
+    public class DecodeTask extends AsyncTask<Void, Void, Boolean> {
 
         @Override
-        protected String doInBackground(String... url) {
+        protected Boolean doInBackground(Void... params) {
             //this runs on a new thread
             initializePlayer();
-            return "null";
+            return true;
         }
 
         @Override
-        protected void onPostExecute(String s) {
+        protected void onPostExecute(Boolean result) {
             //this runs on ui thread
         }
     }
@@ -115,8 +112,8 @@ public class PlayerActivity extends Activity implements SurfaceHolder.Callback{
     private void initializePlayer() {
         mMediaCodecPlayer = new MediaCodecPlayer(mSurfaceHolder, getApplicationContext());
 
-        mMediaCodecPlayer.setAudioDataSource(AUDIO_URL, null);
-        mMediaCodecPlayer.setVideoDataSource(VIDEO_URL, null);
+        mMediaCodecPlayer.setAudioDataSource(mFileUrl, null);
+        mMediaCodecPlayer.setVideoDataSource(mFileUrl, null);
         mMediaCodecPlayer.start(); //from IDLE to PREPARING
         try {
             mMediaCodecPlayer.prepare();

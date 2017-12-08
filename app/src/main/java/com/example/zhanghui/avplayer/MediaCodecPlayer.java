@@ -2,8 +2,6 @@ package com.example.zhanghui.avplayer;
 
 import android.content.Context;
 import android.media.MediaCodec;
-import android.media.MediaCodecInfo;
-import android.media.MediaCodecList;
 import android.media.MediaExtractor;
 import android.media.MediaFormat;
 import android.net.Uri;
@@ -11,16 +9,9 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
-/**
- * JB(API 21) introduces {@link MediaCodec} tunneled mode API.  It allows apps
- * to use MediaCodec to delegate their Audio/Video rendering to a vendor provided
- * Codec component.
- */
 public class MediaCodecPlayer implements MediaTimeProvider {
     private static final String TAG = MediaCodecPlayer.class.getSimpleName();
 
@@ -46,14 +37,14 @@ public class MediaCodecPlayer implements MediaTimeProvider {
     private Thread mThread;
     private Uri mAudioUri;
     private Uri mVideoUri;
-    private VideoFrameReleaseTimeHelper frameReleaseTimeHelper;
+    private VideoFrameReleaseTimeHelper mFrameReleaseTimeHelper;
 
     /*
      * Media player class to playback video using MediaCodec.
      */
     public MediaCodecPlayer(SurfaceHolder holder, Context context) {
         mSurfaceHolder = holder;
-        frameReleaseTimeHelper = new VideoFrameReleaseTimeHelper(context);
+        mFrameReleaseTimeHelper = new VideoFrameReleaseTimeHelper(context);
         mAudioTrackState = null;
         mState = STATE_IDLE;
         mThread = new Thread(new Runnable() {
@@ -213,31 +204,11 @@ public class MediaCodecPlayer implements MediaTimeProvider {
         boolean isAudio = mime.startsWith("audio/");
         MediaCodec codec;
 
-        // setup video codec if needed
-        if (isVideo) {
-            MediaCodecList mcl = new MediaCodecList(MediaCodecList.REGULAR_CODECS);
-            String codecName = mcl.findDecoderForFormat(format);
-            //if (codecName == null) {
-            //    Log.e(TAG,"addTrack - Could not find codec for "+mime+
-            //            " format!");
-            //    return false;
-            //}
-
-            //codec = MediaCodec.createByCodecName(codecName);
-            codec = MediaCodec.createDecoderByType(mime);
-            if (codec == null) {
-                Log.e(TAG, "addTrack - Could not create codec "+
-                        codecName+"!");
-                return false;
-            }
-        }
-        else {
-            codec = MediaCodec.createDecoderByType(mime);
-            if (codec == null) {
-                Log.e(TAG, "addTrack - Could not create regular playback codec for mime "+
-                        mime+"!");
-                return false;
-            }
+        codec = MediaCodec.createDecoderByType(mime);
+        if (codec == null) {
+            Log.e(TAG, "addTrack - Could not create regular playback codec for mime "+
+                    mime+"!");
+            return false;
         }
         codec.configure(
                 format,
@@ -293,7 +264,7 @@ public class MediaCodecPlayer implements MediaTimeProvider {
     }
 
     public void startThread() {
-        frameReleaseTimeHelper.enable();
+        mFrameReleaseTimeHelper.enable();
         start();
         synchronized (mThreadStarted) {
             mThreadStarted = true;
@@ -370,9 +341,9 @@ public class MediaCodecPlayer implements MediaTimeProvider {
                 mVideoExtractor = null;
             }
 
-            if (frameReleaseTimeHelper != null) {
-                frameReleaseTimeHelper.disable();
-                frameReleaseTimeHelper = null;
+            if (mFrameReleaseTimeHelper != null) {
+                mFrameReleaseTimeHelper.disable();
+                mFrameReleaseTimeHelper = null;
             }
 
             mDurationUs = -1;
@@ -435,18 +406,18 @@ public class MediaCodecPlayer implements MediaTimeProvider {
     public long getRealTimeUsForMediaTime(long mediaTimeUs) {
         if (mDeltaTimeUs == -1) {
             long nowUs = getNowUs();
-            mDeltaTimeUs = nowUs - mediaTimeUs; //-32000
+            mDeltaTimeUs = nowUs - mediaTimeUs;
         }
         long earlyUs = mDeltaTimeUs + mediaTimeUs - getNowUs();
         long unadjustedFrameReleaseTimeNs = System.nanoTime() + (earlyUs * 1000);
-        long adjustedReleaseTimeNs = frameReleaseTimeHelper.adjustReleaseTime(
+        long adjustedReleaseTimeNs = mFrameReleaseTimeHelper.adjustReleaseTime(
                 mDeltaTimeUs + mediaTimeUs, unadjustedFrameReleaseTimeNs);
         return adjustedReleaseTimeNs / 1000;
     }
 
     public long getVsyncDurationNs() {
-        if (frameReleaseTimeHelper != null) {
-            return frameReleaseTimeHelper.getVsyncDurationNs();
+        if (mFrameReleaseTimeHelper != null) {
+            return mFrameReleaseTimeHelper.getVsyncDurationNs();
         } else {
             return -1;
         }

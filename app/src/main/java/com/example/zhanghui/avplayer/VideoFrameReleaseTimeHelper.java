@@ -156,7 +156,6 @@ public final class VideoFrameReleaseTimeHelper {
     }
 
     // Find the timestamp of the closest vsync. This is the vsync that we're targeting.
-    Log.d("avsync", "vsyncSampler.sampledVsyncTimeNs is " + vsyncSampler.sampledVsyncTimeNs);
     long snappedTimeNs = closestVsync(adjustedReleaseTimeNs,
         vsyncSampler.sampledVsyncTimeNs, vsyncDurationNs);
     // Apply an offset so that we release before the target vsync, but after the previous one.
